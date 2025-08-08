@@ -6,10 +6,11 @@ const router=express.Router();
 router.post('/addProduct', productController.addProduct);
 router.post('/registerProduct', productController.registerProduct);
 router.post('/productImg', productController.productImg);
-// router.get('/productDetails', productController.productDetails);
-router.get('/productDetails/:productId', productController.productDetails);
+router.get('/productDetails', productController.productDetails);
+router.get('/productDetails/:productId', productController.productDetailsById);
 router.get('/avgPrice', productController.avgPrice);
-// router.get('/showProducts', productController.showProducts);
+router.post('/addDetails', productController.addDetails);
+router.post('/addRating', productController.addRating);
 
 module.exports=router;
 

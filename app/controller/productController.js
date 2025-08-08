@@ -1,6 +1,9 @@
 const image = require("../model/image");
-const product = require("../model/product");
+const Product = require("../model/product");
 const Register = require("../model/register");
+const Details = require("../model/details");
+const Rating = require("../model/rating");
+const mongoose = require("mongoose");
 
 class productController {
   async addProduct(req, res) {
@@ -61,11 +64,56 @@ class productController {
     }
   }
 
+  async addDetails(req, res) {
+    try {
+      const { size, color, price, productId } = req.body;
+
+      const newDetails = new Details({ size, color, price, productId });
+      await newDetails.save();
+
+      res.status(201).json({
+        status: "true",
+        message: "Details added successfully",
+        details: newDetails,
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: "false",
+        message: "Internal Server Error",
+      });
+    }
+  }
+
+  async addRating(req, res) {
+    try {
+      const { rating, productId } = req.body;
+
+      const newRating = new Rating({ rating, productId });
+      await newRating.save();
+      res.status(201).json({
+        status: true,
+        message: "Rating added successfully",
+        rating: newRating,
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: false,
+        message: "Internal Server Error",
+      });
+    }
+  }
+
   async productDetails(req, res) {
     try {
-      const { productId } = req.params;
-
-      const productDetails = await product.aggregate([
+      const productDetails = await Product.aggregate([
+        {
+          $lookup: {
+            from: "details",
+            localField: "_id",
+            foreignField: "productId",
+            as: "details",
+          },
+        },
         {
           $lookup: {
             from: "images",
@@ -83,12 +131,26 @@ class productController {
           },
         },
         {
+          $lookup: {
+            from: "ratings",
+            localField: "_id",
+            foreignField: "productId",
+            as: "ratings",
+          },
+        },
+        {
           $project: {
             _id: 1,
             Pname: 1,
             price: 1,
-            images: 1,
+            details: {
+              size: "$details.size",
+              color: "$details.color",
+              price: "$details.price",
+            },
+            images: "$images.img",
             registerBy: "$registers.registerBy",
+            ratings: "$ratings.rating",
           },
         },
       ]);
@@ -103,6 +165,88 @@ class productController {
       res.status(500).json({
         status: "false",
         message: "Internal Server Error",
+      });
+    }
+  }
+
+  async productDetailsById(req, res) {
+    try {
+      const { productId } = req.params;
+      // if (!mongoose.Types.ObjectId.isValid(productId)) {
+      //   return res.status(400).json({
+      //     status: false,
+      //     message: "Invalid productId",
+      //   });
+      // }
+
+      const productDetails = await Product.aggregate([
+        {
+          $match: { _id: new mongoose.Types.ObjectId(productId) },
+        },
+        {
+          $lookup: {
+            from: "details",
+            localField: "_id",
+            foreignField: "productId",
+            as: "details",
+          },
+        },
+        {
+          $lookup: {
+            from: "images",
+            localField: "_id",
+            foreignField: "productId",
+            as: "images",
+          },
+        },
+        {
+          $lookup: {
+            from: "registers",
+            localField: "_id",
+            foreignField: "productId",
+            as: "registers",
+          },
+        },
+        {
+          $lookup: {
+            from: "ratings",
+            localField: "_id",
+            foreignField: "productId",
+            as: "ratings",
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            Pname: 1,
+            price: 1,
+            details: {
+              size: "$details.size",
+              color: "$details.color",
+              price: "$details.price",
+            },
+            //   details: {
+            //   size: { $arrayElemAt: ["$details.size", 0] },
+            //   color: { $arrayElemAt: ["$details.color", 0] },
+            //   price: { $arrayElemAt: ["$details.price", 0] },
+            // },
+            images: "$images.img",
+            registerBy: "$registers.registerBy",
+            ratings: "$ratings.rating",
+          },
+        },
+      ]);
+
+      res.status(200).json({
+        status: true,
+        message: "Product details fetched successfully",
+        product: productDetails,
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: "false",
+        message: "Internal Server Error",
+        error: error.message, // send the error to debug faster
       });
     }
   }
@@ -137,37 +281,6 @@ class productController {
       });
     }
   }
-
-  //   async showProducts(req,res){
-  //     try {
-
-  //         const showproduct= await product.aggregate([
-  //             {
-  //                 $project:{
-  //                     Pname: 1,
-  //                     price: 1,
-  //                     _id: 1,
-  //                     images: 1,
-  //                     registerBy:"$registers.registerBy",
-  //                 }
-  //             }
-  //         ])
-
-  //         res.status(200).json({
-  //             status:"true",
-  //             total:showproduct.length,
-  //             message:"Products fetched successfully",
-  //             products:showproduct
-  //         });
-
-  //     } catch (error) {
-  //       res.status(500).json({
-  //         status: "false",
-  //         message: "Internal Server Error",
-  //       });
-
-  //     }
-  //   }
 }
 
 module.exports = new productController();
